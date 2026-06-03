@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>GS Bull Scanner v10</title>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { background: #080A0D; color: #C8D4E0; font-family: 'JetBrains Mono', monospace; }
+::-webkit-scrollbar { display: none; }
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@300;400;500;600&display=swap');
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback, useRef, useMemo } = React;
+
+
+
+const TWELVE_KEY = "849508539a274f98b29b8d86ba71dda9";
+
+const EARNINGS_DATES = {
+  NVDA:"2026-08-27",AVGO:"2026-09-04",MRVL:"2026-06-10",
+  SNOW:"2026-06-04",DDOG:"2026-08-05",APP:"2026-08-06",
+  PLTR:"2026-08-04",TSLA:"2026-07-22",MSFT:"2026-07-29",
+  META:"2026-07-29",NFLX:"2026-07-15",DAL:"2026-07-09",
+  ANET:"2026-07-29",AMD:"2026-07-29",QCOM:"2026-07-30",
+  LMT:"2026-07-22",RTX:"2026-07-22",NOC:"2026-07-28",GD:"2026-07-23",
+  ARM:"2026-07-30",SMCI:"2026-08-05",CRWV:"2026-08-12",
+  IONQ:"2026-08-06",RXRX:"2026-08-06",SOUN:"2026-08-11",
+  PLUG:"2026-08-07",OKLO:"2026-08-12",JOBY:"2026-08-11",
+  NOW:"2026-07-23",FIG:"2026-09-09",GTLB:"2026-06-02",
+  INTC:"2026-07-24",DELL:"2026-08-27",LMND:"2026-08-06",
+  HOOD:"2026-08-05",TEAM:"2026-08-19",ZETA:"2026-08-06",
+  OUST:"2026-08-05",RGTI:"2026-08-11",QBTS:"2026-08-12",
+  IBM:"2026-07-23",UMAC:"2026-08-12",AVAV:"2026-06-24",
+  RKLB:"2026-08-11",ASTS:"2026-08-12",NTNX:"2026-08-27",
+  AAPL:"2026-07-31",
+  CAT:"2026-07-29", DE:"2026-08-15", VIAV:"2026-08-06",
+  JPM:"2026-07-14",
+  CORZ:"2026-08-06",
+  CLSK:"2026-08-07"
+};
+
+const TICKERS = [
+  // ── MARKET HEALTH ──
+  {symbol:"SPY",name:"S&P 500 ETF",sector:"Market Index",tab:"market",tags:["Index","Market"],thesis:"S&P 500 benchmark. Use Range%, Vol Ratio, and RS as market health indicators. When SPY is compressing with low vol -- risk-on environment for breakouts. When SPY is wide and volatile -- tighten position sizing.",ss:{dp:75,of:70,hc:false,au:false,st:true,bg:false},extended:false,sc:false},
+  {symbol:"QQQ",name:"Nasdaq 100 ETF",sector:"Market Index",tab:"market",tags:["Index","Tech"],thesis:"Nasdaq 100 benchmark -- tech and AI sector health. QQQ strength confirms AI infrastructure setups. QQQ weakness is a caution flag on high-beta AI names regardless of individual compression signals.",ss:{dp:74,of:69,hc:false,au:false,st:true,bg:false},extended:false,sc:false},
+  {symbol:"IWM",name:"Russell 2000 ETF",sector:"Market Index",tab:"market",tags:["Index","Small Cap"],thesis:"Small cap health indicator -- critical for EMRG tab names. IWM compressing with vol drought = ideal environment for small cap breakouts. IWM breaking down = reduce small cap exposure regardless of individual setups.",ss:{dp:70,of:65,hc:false,au:false,st:true,bg:false},extended:false,sc:false},
+  {symbol:"CBRS",name:"Cerebras Systems",sector:"AI Chips",tab:"ai",tags:["AI Infra","IPO","Extended","Analyst Up"],thesis:"FIRED -- largest tech IPO of 2026. Wafer-Scale Engine AI inference chip -- direct NVDA competitor. IPO at $185, surged 68% to $386, now at $220. Cathie Wood ARK buying aggressively. Wait for new base formation before entry.",ss:{dp:72,of:68,hc:true,au:true,st:true,bg:true},extended:true,sc:false},
+  {symbol:"CRWV",name:"CoreWeave",sector:"AI Cloud",tab:"ai",tags:["AI Infra","Contract","IPO"],thesis:"Hyperscaler AI cloud -- MSFT plus NVDA contracts. Recent IPO. Watch for compression base.",ss:{dp:77,of:78,hc:true,au:true,st:true,bg:true},extended:false,sc:false},
+  {symbol:"NBIS",name:"Nebius Group",sector:"AI Cloud",tab:"ai",tags:["AI Infra","Contract"],thesis:"TD SYNNEX plus Meta plus MSFT contracts. $2B NVDA investment. Wait for new base.",ss:{dp:80,of:45,hc:true,au:true,st:true,bg:true},extended:false,sc:false},
+  {symbol:"IREN",name:"Iris Energy",sector:"AI Data Centers",tab:"ai",tags:["AI Infra","BTC Pivot"],thesis:"Bitcoin miner pivoting to AI compute. Strong institutional accumulation. Watch for pullback base.",ss:{dp:88,of:52,hc:false,au:true,st:true,bg:true},extended:false,sc:false},
+  {symbol:"APLD",name:"Applied Digital",sector:"AI Infrastructure",tab:"ai",tags:["AI Infra","Contract","HPC"],thesis:"HPC data center buildout. SpaceX narrative. Watch for compression after large move.",ss:{dp:72,of:60,hc:true,au:false,st:true,bg:true},extended:false,sc:false},
+  {symbol:"ANET",name:"Arista Networks",sector:"AI Networking",tab:"ai",tags:["AI Infra","Analyst Up"],thesis:"AI networking leader. Post-earnings consolidation. High institutional conviction.",ss:{dp:74,of:65,hc:false,au:true,st:true,bg:true},extended:false,sc:false},
+  {symbol:"SMCI",name:"Super Micro Computer",sector:"AI Servers",tab:"ai",tags:["AI Infra"],thesis:"AI server buildout -- NVDA partnership. Extended base formation. Multi-week compression watch.",ss:{dp:65,of:55,hc:false,au:false,st:true,bg:false},extended:false,sc:false},
+  {symbol:"NVDA",name:"Nvidia",sector:"AI Chips",tab:"ai",tags:["AI Infra","Contract","Analyst Up"],thesis:"Data center dominance. $81.6B Q1 revenue. Post-earnings digestion zone.",ss:{dp:82,of:70,hc:true,au:true,st:true,bg:true},extended:false,sc:false},
+  {symbol:"AVGO",name:"Broadcom",sector:"AI Chips",tab:"ai",tags:["AI Infra","Contract","Analyst Up"],thesis:"Google plus Anthropic custom chip expanding. AI ASIC leadership. Strong backlog.",ss:{dp:78,of:68,hc:true,au:true,st:true,bg:true},extended:false,sc:false},
+  {symbol:"MRVL",name:"Marvell Technology",sector:"AI Infrastructure",tab:"ai",tags:["AI Infra","Contract"],thesis:"Custom AI silicon plus AWS partnership. Post-earnings base building.",ss:{dp:76,of:62,hc:true,au:false,st:true,bg:true},extended:false,sc:false},
+  {symbol:"ARM",name:"Arm Holdings",sector:"AI Chips",tab:"ai",tags:["AI Infra","Analyst Up"],thesis:"AI chip architecture licensing. Every AI device runs ARM. Royalty acceleration thesis.",ss:{dp:71,of:66,hc:false,au:true,st:true,bg:true},extended:false,sc:false},
+  {symbol:"AMD",name:"Advanced Micro Devices",sector:"AI Chips",tab:"ai",tags:["AI Infra","Analyst Up"],thesis:"MI300X gaining datacenter share. Post-earnings base -- re-entry setup watch.",ss:{dp:70,of:58,hc:false,au:true,st:true,bg:false},extended:false,sc:false},
+  {symbol:"QCOM",name:"Qualcomm",sector:"AI Chips",tab:"ai",tags:["AI Infra","Analyst Up","Contract"],thesis:"Data center CPU entry plus hyperscaler custom silicon. AI edge compute pivot.",ss:{dp:69,of:64,hc:true,au:true,st:true,bg:false},extended:false,sc:false},
+  {symbol:"INTC",name:"Intel",sector:"AI Chips + Foundry",tab:"ai",tags:["AI Infra","Analyst Up","Turnaround"],thesis:"Turnaround confirmed. 18A foundry yields improving. 200 Panther Lake design wins. Watch for compression base.",ss:{dp:74,of:66,hc:true,au:true,st:true,bg:true},extended:false,sc:false},
+  {symbol:"CORZ",name:"Core Scientific",sector:"AI Data Centers",tab:"emerging",tags:["AI Infra","Contract","Small Cap"],thesis:"Multi-year CoreWeave data center deal intact despite failed acquisition attempt. Showed relative strength when entire mining sector sold off on NVDA/CRWV news -- institutional accumulation signal. BTC mining plus AI HPC pivot. Watching for compression base.",ss:{dp:68,of:60,hc:true,au:true,st:true,bg:true},extended:false,sc:true},
+  {symbol:"CLSK",name:"CleanSpark",sector:"AI Bitcoin Mining",tab:"emerging",tags:["AI Infra","Contract","Small Cap","Extended"],thesis:"FIRED -- ripped 43% from $12 to $17+ in one month. Situational Awareness hedge fund boosting position. Advanced hyperscaler talks for AI data center capacity. 1.8GW power portfolio. Wait for re-compression base.",ss:{dp:66,of:58,hc:true,au:true,st:true,bg:true},extended:true,sc:true},
+  {symbol:"GRRR",name:"Gorilla Technology",sector:"AI Video",tab:"emerging",tags:["AI Infra","Small Cap","Contract"],thesis:"AI video intelligence -- smart city plus enterprise contracts. Watch for re-compression after big move.",ss:{dp:68,of:55,hc:true,au:false,st:true,bg:true},extended:false,sc:true},
+  {symbol:"RBRK",name:"Rubrik",sector:"AI Cybersecurity",tab:"emerging",tags:["AI Infra","Contract","Extended"],thesis:"FIRED at $52-55. Now $78+. Wait for multi-week base before re-entry.",ss:{dp:74,of:70,hc:true,au:true,st:true,bg:true},extended:true,sc:false},
+  {symbol:"SOUN",name:"SoundHound AI",sector:"Voice AI",tab:"emerging",tags:["AI Infra","Contract","Small Cap"],thesis:"Voice AI -- auto plus restaurant contracts. NVDA-backed. Watch for compression setup.",ss:{dp:66,of:58,hc:true,au:false,st:true,bg:true},extended:false,sc:true},
+  {symbol:"BBAI",name:"BigBear.ai",sector:"Defense AI",tab:"emerging",tags:["Defense AI","Contract","Small Cap"],thesis:"Defense AI analytics. Government contract velocity. Low float -- compression breakouts violent.",ss:{dp:62,of:52,hc:true,au:false,st:true,bg:true},extended:false,sc:true},
+  {symbol:"LUNR",name:"Intuitive Machines",sector:"Space",tab:"emerging",tags:["Defense","Contract","Space"],thesis:"NASA lunar contracts. Low float -- contract announcements drive violent moves.",ss:{dp:64,of:56,hc:true,au:false,st:true,bg:true},extended:false,sc:true},
+  {symbol:"ACHR",name:"Archer Aviation",sector:"eVTOL",tab:"emerging",tags:["Defense","Contract"],thesis:"eVTOL -- DOD contract plus United Airlines LOI. Stellantis manufacturing. Pre-revenue coil.",ss:{dp:63,of:54,hc:true,au:true,st:true,bg:true},extended:false,sc:true},
+  {symbol:"IONQ",name:"IonQ",sector:"Quantum Computing",tab:"emerging",tags:["AI Infra","Contract","Extended"],thesis:"FIRED from sub-$40 base. Now extended. Wait for new base formation.",ss:{dp:67,of:61,hc:true,au:true,st:true,bg:true},extended:true,sc:false},
+  {symbol:"RXRX",name:"Recursion Pharma",sector:"AI Drug Discovery",tab:"emerging",tags:["AI Infra","Biotech","Contract"],thesis:"NVDA-backed AI drug discovery. Roche plus Bayer partnerships. Tech-biotech crossover.",ss:{dp:65,of:50,hc:true,au:false,st:true,bg:false},extended:false,sc:true},
+  {symbol:"PLUG",name:"Plug Power",sector:"Hydrogen Energy",tab:"emerging",tags:["Energy","Small Cap","AI Power"],thesis:"Hydrogen fuel cells for data center power. AI energy demand tailwind. Beaten down -- compression base watch.",ss:{dp:65,of:55,hc:true,au:false,st:true,bg:false},extended:false,sc:true},
+  {symbol:"OKLO",name:"Oklo",sector:"Nuclear Energy",tab:"emerging",tags:["Energy","Small Cap","Nuclear","Contract"],thesis:"Small modular reactors -- Sam Altman backed. AI data center power. Pre-revenue coil.",ss:{dp:66,of:58,hc:true,au:true,st:true,bg:true},extended:false,sc:true},
+  {symbol:"NNE",name:"Nano Nuclear Energy",sector:"Nuclear Energy",tab:"emerging",tags:["Energy","Small Cap","Nuclear","Defense"],thesis:"Micro nuclear reactors for defense and remote AI compute. Low float -- violent on contract news.",ss:{dp:62,of:52,hc:true,au:false,st:true,bg:true},extended:false,sc:true},
+  {symbol:"KULR",name:"KULR Technology",sector:"Thermal AI",tab:"emerging",tags:["AI Infra","Small Cap","Contract","Defense"],thesis:"Thermal management for AI chips. NASA plus DOD contracts. Low float compression patterns explosive. Dark pool surging to 82 -- institutional accumulation accelerating. Options flow 68 -- smart money confirmed.",ss:{dp:82,of:68,hc:true,au:false,st:true,bg:true},extended:false,sc:true},
+  {symbol:"MGNI",name:"Magnite",sector:"AI AdTech",tab:"emerging",tags:["AI Infra","Small Cap","Analyst Up"],thesis:"AI-driven programmatic advertising infrastructure. Recurring revenue growing.",ss:{dp:65,of:57,hc:false,au:true,st:true,bg:true},extended:false,sc:true},
+  {symbol:"JOBY",name:"Joby Aviation",sector:"eVTOL",tab:"emerging",tags:["Defense","Small Cap","Contract"],thesis:"Air taxi -- Toyota plus DOD contracts. FAA certification approaching. High asymmetry.",ss:{dp:64,of:54,hc:true,au:true,st:true,bg:true},extended:false,sc:true},
+  {symbol:"RCAT",name:"Red Cat Holdings",sector:"Defense Drones",tab:"emerging",tags:["Defense","Small Cap","Contract"],thesis:"Military drone systems -- Ukraine conflict demand. DOD contracts accelerating. Low float.",ss:{dp:66,of:58,hc:true,au:false,st:true,bg:true},extended:false,sc:true},
+  {symbol:"ONDS",name:"Ondas Holdings",sector:"Defense Drones",tab:"emerging",tags:["Defense","Small Cap","Contract","AI Infra"],thesis:"FAA-approved autonomous drones for rail, defense, energy inspection. DOD contract stacking.",ss:{dp:63,of:52,hc:true,au:false,st:true,bg:true},extended:false,sc:true},
+  {symbol:"SERV",name:"Serve Robotics",sector:"AI Robotics",tab:"emerging",tags:["AI Infra","Small Cap","Contract"],thesis:"Sidewalk delivery robots -- NVDA backed, Uber Eats partnership. Low float explosive compression.",ss:{dp:64,of:55,hc:true,au:true,st:true,bg:true},extended:false,sc:true},
+  {symbol:"RYCEY",name:"Rolls-Royce Holdings",sector:"Defense Energy",tab:"emerging",tags:["Defense","Small Cap","Nuclear","Contract"],thesis:"SMR plus defense jet engines. UK nuclear renaissance play. Turnaround thesis -- compression re-entry.",ss:{dp:65,of:54,hc:true,au:true,st:true,bg:true},extended:false,sc:true},
+  {symbol:"FIG",name:"Figma",sector:"AI Design Platform",tab:"emerging",tags:["AI Infra","Small Cap","Analyst Up"],thesis:"Design-to-code AI. 46% Q1 revenue growth. Down from $142 ATH. 75% enterprise users exceeding AI credit limits.",ss:{dp:68,of:60,hc:false,au:true,st:true,bg:true},extended:false,sc:true},
+  {symbol:"GTLB",name:"GitLab",sector:"AI DevSecOps",tab:"emerging",tags:["AI Infra","Small Cap","Analyst Up"],thesis:"AI-native DevSecOps. 26% revenue growth, 87% gross margin, ARR over $1B. Down 50% from highs.",ss:{dp:67,of:58,hc:false,au:true,st:true,bg:true},extended:false,sc:true},
+  {symbol:"LMND",name:"Lemonade",sector:"AI Insurance",tab:"emerging",tags:["AI Infra","Small Cap","Analyst Up"],thesis:"AI-native insurance. 62% revenue growth guided 2026. Down 24% YTD after 94% run in 2025.",ss:{dp:66,of:58,hc:false,au:true,st:true,bg:true},extended:false,sc:true},
+  {symbol:"HOOD",name:"Robinhood Markets",sector:"AI Fintech",tab:"emerging",tags:["AI Infra","Small Cap","Analyst Up"],thesis:"AI agentic trading platform. Gold subscribers up 36% YoY. Beaten down from $153 -- compression setup.",ss:{dp:68,of:62,hc:false,au:true,st:true,bg:true},extended:false,sc:true},
+  {symbol:"ZETA",name:"Zeta Global",sector:"AI Marketing Cloud",tab:"emerging",tags:["AI Infra","Small Cap","Contract","Analyst Up"],thesis:"AI marketing -- OpenAI advertising partnership. Athena agent. 50% Q1 revenue growth.",ss:{dp:68,of:60,hc:true,au:true,st:true,bg:true},extended:false,sc:true},
+  {symbol:"OUST",name:"Ouster",sector:"Physical AI Lidar",tab:"emerging",tags:["AI Infra","Small Cap","Contract","Defense"],thesis:"Physical AI lidar. Rev8 on NVIDIA DRIVE Hyperion. Counter-drone defense. 49% Q1 growth. Rosenblatt $53 target.",ss:{dp:67,of:60,hc:true,au:true,st:true,bg:true},extended:false,sc:true},
+  {symbol:"RGTI",name:"Rigetti Computing",sector:"Quantum Computing",tab:"emerging",tags:["AI Infra","Small Cap","Contract","Quantum"],thesis:"Full-stack quantum -- Q1 revenue up 199%. 108-qubit on AWS plus Azure plus Google. $100M CHIPS Act LOI.",ss:{dp:64,of:57,hc:true,au:true,st:true,bg:true},extended:false,sc:true},
+  {symbol:"QBTS",name:"D-Wave Quantum",sector:"Quantum Computing",tab:"emerging",tags:["AI Infra","Small Cap","Contract","Quantum"],thesis:"Quantum annealing leader. 83% gross margin. Down 9% YTD -- beaten down compression candidate.",ss:{dp:63,of:55,hc:true,au:true,st:true,bg:true},extended:false,sc:true},
+  {symbol:"INFQ",name:"Infleqtion",sector:"Quantum Computing",tab:"emerging",tags:["AI Infra","Small Cap","Contract","Quantum"],thesis:"Neutral atom quantum -- CHIPS Act backed SPAC listing Feb 2026. Pre-discovery stage.",ss:{dp:62,of:52,hc:true,au:true,st:true,bg:true},extended:false,sc:true},
+  {symbol:"UMAC",name:"Unusual Machines",sector:"Defense Drones",tab:"emerging",tags:["Defense","Small Cap","Contract"],thesis:"American-made drone components. Pentagon domestic manufacturing push beneficiary. Low float.",ss:{dp:63,of:54,hc:true,au:false,st:true,bg:true},extended:false,sc:true},
+  {symbol:"NTNX",name:"Nutanix",sector:"Hybrid Cloud AI",tab:"emerging",tags:["AI Infra","Contract","Analyst Up"],thesis:"Hybrid multicloud -- VMware migration beneficiary. ARR $2.43B. Agentic AI stack positioning.",ss:{dp:70,of:63,hc:true,au:true,st:true,bg:true},extended:false,sc:false},
+  {symbol:"PLTR",name:"Palantir",sector:"Government AI",tab:"defense",tags:["Defense AI","Contract","Analyst Up"],thesis:"AIP adoption accelerating. Defense budget clarity. Pre-earnings long only -- hard exit rule.",ss:{dp:80,of:75,hc:true,au:true,st:true,bg:true},extended:false,sc:false},
+  {symbol:"LMT",name:"Lockheed Martin",sector:"Defense",tab:"defense",tags:["Defense","Contract"],thesis:"F-35 contracts accelerating. Defense budget expansion. Steady institutional base.",ss:{dp:72,of:62,hc:true,au:false,st:true,bg:true},extended:false,sc:false},
+  {symbol:"RTX",name:"RTX Corporation",sector:"Defense",tab:"defense",tags:["Defense","Contract","Analyst Up"],thesis:"Missile defense plus geopolitical tailwind. Raytheon backlog at record.",ss:{dp:70,of:60,hc:true,au:true,st:true,bg:true},extended:false,sc:false},
+  {symbol:"NOC",name:"Northrop Grumman",sector:"Defense",tab:"defense",tags:["Defense","Contract"],thesis:"B-21 Raider production ramping. Space defense contracts. Low volatility coil.",ss:{dp:71,of:58,hc:true,au:false,st:true,bg:true},extended:false,sc:false},
+  {symbol:"GD",name:"General Dynamics",sector:"Defense",tab:"defense",tags:["Defense","Contract"],thesis:"Gulfstream plus defense systems. Shipbuilding backlog record. Steady accumulation.",ss:{dp:68,of:55,hc:true,au:false,st:true,bg:true},extended:false,sc:false},
+  {symbol:"AVAV",name:"AeroVironment",sector:"Defense Drones",tab:"defense",tags:["Defense","Contract","Analyst Up","Extended"],thesis:"FIRED -- ripped from $158 to $214 in two weeks on Pentagon drone subsidy news. Wait for base.",ss:{dp:72,of:64,hc:true,au:true,st:true,bg:true},extended:true,sc:false},
+  {symbol:"APP",name:"AppLovin",sector:"AI AdTech",tab:"momentum",tags:["AI Infra","Analyst Up"],thesis:"AI-powered ad platform. Strong earnings momentum -- consolidating after parabolic run.",ss:{dp:76,of:72,hc:false,au:true,st:true,bg:true},extended:false,sc:false},
+  {symbol:"TSLA",name:"Tesla",sector:"EV AI",tab:"momentum",tags:["AI Infra","Analyst Up"],thesis:"China sales rebound. FSD approval. Robotaxi catalyst. Watch for compression zone.",ss:{dp:72,of:65,hc:false,au:true,st:true,bg:false},extended:false,sc:false},
+  {symbol:"SNOW",name:"Snowflake",sector:"Data AI",tab:"momentum",tags:["AI Infra","Contract"],thesis:"AWS partnership gap plus 32 percent. Post-gap consolidation -- flag watch.",ss:{dp:73,of:64,hc:true,au:false,st:true,bg:true},extended:false,sc:false},
+  {symbol:"DDOG",name:"Datadog",sector:"AI Observability",tab:"momentum",tags:["AI Infra","Contract","Analyst Up"],thesis:"Q1 beat plus FY guidance raise. 8-figure AI deals. Tight base post-earnings.",ss:{dp:74,of:68,hc:true,au:true,st:true,bg:true},extended:false,sc:false},
+  {symbol:"MSFT",name:"Microsoft",sector:"Cloud AI",tab:"momentum",tags:["AI Infra","Contract"],thesis:"Azure AI growth 35 percent YoY. Copilot enterprise adoption. Tight base above breakout.",ss:{dp:75,of:67,hc:true,au:false,st:true,bg:true},extended:false,sc:false},
+  {symbol:"META",name:"Meta Platforms",sector:"Social AI",tab:"momentum",tags:["AI Infra","Analyst Up"],thesis:"Llama strategy plus ad AI ROI. Pulling back to key level.",ss:{dp:73,of:65,hc:false,au:true,st:true,bg:false},extended:false,sc:false},
+  {symbol:"CAT",name:"Caterpillar",sector:"AI Infrastructure",tab:"momentum",tags:["AI Infra","Contract","Analyst Up"],thesis:"Hidden AI infrastructure play -- $10.2B data center generator sales. Power Generation revenue up 41% YoY. Record $63B backlog up 79% YoY. Monarch Tractor autonomous acquisition. Evercore $1,103 target. Tariff headwind is the risk -- watch margin compression.",ss:{dp:74,of:66,hc:true,au:true,st:true,bg:true},extended:false,sc:false},
+  {symbol:"DE",name:"Deere & Company",sector:"AI Automation",tab:"momentum",tags:["AI Infra","Contract","Analyst Up"],thesis:"Autonomous farming equipment leader -- AI-driven precision agriculture. Up 26% in 2026 vs S&P 7%. Defense supply chain exposure growing. JD Operations Center AI platform expanding into construction and mining automation.",ss:{dp:72,of:63,hc:true,au:true,st:true,bg:true},extended:false,sc:false},
+  {symbol:"VIAV",name:"Viavi Solutions",sector:"AI Optical Networking",tab:"momentum",tags:["AI Infra","Contract","Analyst Up"],thesis:"AI data center optical test -- 400G/800G Ethernet fabric validation for hyperscalers. Q3 beat-and-raise, jumped 17% on earnings. B. Riley target $53, Northland $50. Spirent acquisition expands TAM. Tight weekly wedge into 8 EMA -- over $55 targets $70+. Earnings Aug 6.",ss:{dp:68,of:64,hc:true,au:true,st:true,bg:true},extended:false,sc:false},
+  {symbol:"DAL",name:"Delta Air Lines",sector:"Travel",tab:"momentum",tags:["Travel","Analyst Up"],thesis:"Post-Iran ceasefire travel demand. Oil falling equals margin expansion.",ss:{dp:66,of:58,hc:false,au:true,st:true,bg:false},extended:false,sc:false},
+  {symbol:"IBM",name:"IBM",sector:"Quantum + AI Cloud",tab:"momentum",tags:["AI Infra","Contract","Analyst Up","Quantum"],thesis:"Quantum infrastructure -- $2B Trump quantum investment. Watson AI plus hybrid cloud.",ss:{dp:72,of:63,hc:true,au:true,st:true,bg:true},extended:false,sc:false},
+  {symbol:"TEAM",name:"Atlassian",sector:"AI DevOps Platform",tab:"momentum",tags:["AI Infra","Contract","Analyst Up","Extended"],thesis:"FIRED -- ripped from $68 to $107 in one month on 32% revenue beat. Wait for base.",ss:{dp:73,of:66,hc:false,au:true,st:true,bg:true},extended:true,sc:false},
+  {symbol:"NOW",name:"ServiceNow",sector:"AI Workflow Platform",tab:"momentum",tags:["AI Infra","Contract","Analyst Up","Extended"],thesis:"FIRED -- ripped from $90 to $129 on AI partnerships. Excellent fundamentals. Wait for new base.",ss:{dp:76,of:70,hc:true,au:true,st:true,bg:true},extended:true,sc:false},
+  {symbol:"DELL",name:"Dell Technologies",sector:"AI Servers",tab:"momentum",tags:["AI Infra","Contract","Analyst Up","Extended"],thesis:"FIRED -- best day ever +33%. AI server revenue +757% YoY. $51.3B backlog. Wait for base.",ss:{dp:76,of:68,hc:true,au:true,st:true,bg:true},extended:true,sc:false},
+  {symbol:"RKLB",name:"Rocket Lab",sector:"Space Launch",tab:"momentum",tags:["Defense","Contract","Analyst Up","Extended","Space"],thesis:"FIRED -- up 49% in one month. $2.2B backlog. $90M Space Force deal. Wait for base.",ss:{dp:72,of:65,hc:true,au:true,st:true,bg:true},extended:true,sc:false},
+  {symbol:"JPM",name:"JPMorgan Chase",sector:"AI Fintech + Banking",tab:"momentum",tags:["AI Infra","Analyst Up","Contract"],thesis:"Largest US bank deploying AI across trading, risk, and operations. LLM Suite rolled out to 140K employees. AI-driven cost efficiency plus record revenue. Jamie Dimon AI infrastructure investment accelerating. Tight consolidation at highs -- institutional accumulation ongoing.",ss:{dp:76,of:65,hc:true,au:true,st:true,bg:true},extended:false,sc:false},
+  {symbol:"AAPL",name:"Apple",sector:"AI Consumer Tech",tab:"momentum",tags:["AI Infra","Analyst Up","Contract"],thesis:"Apple Intelligence rollout accelerating. Custom silicon dominance -- M4 plus A18 chips. Services revenue compounding. AI-driven supercycle upgrade thesis building. Tight consolidation above key support.",ss:{dp:78,of:68,hc:true,au:true,st:true,bg:true},extended:false,sc:false},
+  {symbol:"ASTS",name:"AST SpaceMobile",sector:"Space Connectivity",tab:"momentum",tags:["AI Infra","Contract","Analyst Up","Extended","Space"],thesis:"FIRED -- up 324% past year. SpaceX IPO halo trade. 60 global MNO partners. Wait for base.",ss:{dp:70,of:63,hc:true,au:true,st:true,bg:true},extended:true,sc:false},
+];
+
+function isGenuineCompression(live, t) {
+  if (!live) return false;
+  if (t && t.tab === 'market') return false; // indexes don't trigger compression alerts
+  if (live.breakoutState >= 2) return false;
+  return live.cr < 8 && live.volDrought && live.aboveMa50 && live.flat < 2.5;
+}
+
+// Auto-rehabilitate extended names that have pulled back and re-compressed
+// If an extended name shows 52W range position <= 60% AND compression forming,
+// it has pulled back enough to be considered a fresh setup
+function isRehabilitatedSetup(t, live) {
+  if (!t.extended || !live) return false;
+  // Must have pulled back significantly from extension (in lower 60% of 52W range)
+  const pulledBack = live.rangePos52 <= 60;
+  // Must be forming new compression
+  const forming = live.cr < 15 && live.volDrought;
+  // Must be above 50MA (trend intact)
+  const trendOk = live.aboveMa50;
+  return pulledBack && forming && trendOk;
+}
+
+function getSetupStatus(live, t) {
+  if (!live) return null;
+  if (live.breakoutState === 3) return {type:"late", label:"LATE ENTRY", color:"#FF4757", bg:"rgba(255,71,87,0.08)", border:"rgba(255,71,87,0.3)"};
+  if (live.breakoutState === 2) return {type:"breaking", label:"BREAKING OUT — Momentum Entry Only", color:"#B39DDB", bg:"rgba(124,77,255,0.08)", border:"rgba(124,77,255,0.3)"};
+  if (live.breakoutState === 1) return {type:"early", label:"EARLY BREAKOUT — Act Quickly", color:"#FFA726", bg:"rgba(255,167,38,0.08)", border:"rgba(255,167,38,0.3)"};
+  if (isGenuineCompression(live, t)) return {type:"compression", label:"COMPRESSION ALERT — Pre-Breakout Zone", color:"#00D084", bg:"rgba(0,208,132,0.08)", border:"rgba(0,208,132,0.3)"};
+  if (live.isLateSession && live.changePct > 3) return {type:"late", label:"LATE SESSION MOVE — Wait for Tomorrow", color:"#FF4757", bg:"rgba(255,71,87,0.08)", border:"rgba(255,71,87,0.3)"};
+  return null;
+}
+
+// ── EARNINGS CALENDAR HEALTH ──
+function getStaleEarnings() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const stale = [];
+  const upcoming7 = [];
+  Object.entries(EARNINGS_DATES).forEach(([sym, dateStr]) => {
+    const ed = new Date(dateStr);
+    const diff = Math.round((ed - today) / (1000*60*60*24));
+    if (diff < -1) stale.push(sym); // date has passed
+    if (diff >= 0 && diff <= 7) upcoming7.push({sym, diff});
+  });
+  return {stale, upcoming7};
+}
+
+function daysToEarnings(sym) {
+  if (!EARNINGS_DATES[sym]) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const ed = new Date(EARNINGS_DATES[sym]);
+  const diff = Math.round((ed-today)/(1000*60*60*24));
+  return diff >= 0 ? diff : null;
+}
+
+async function fetchTwelveData(symbol) {
+  const url = `https://api.twelvedata.com/time_series?symbol=${symbol}&interval=1day&outputsize=60&apikey=${TWELVE_KEY}&format=JSON`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const data = await r.json();
+  if (!data.values || data.values.length < 10) throw new Error(`No data for ${symbol}`);
+  return data.values.slice().reverse().map(d => ({
+    c: parseFloat(d.close), h: parseFloat(d.high),
+    l: parseFloat(d.low), v: parseFloat(d.volume)
+  })).filter(b => b.c && b.h && b.l && b.v);
+}
+
+// ── OPTIONS FLOW + DARK POOL ENGINE ──
+
+async function fetchOptionsChain(symbol) {
+  // Yahoo Finance options chain via Twelve Data proxy
+  const url = `https://api.twelvedata.com/options?symbol=${symbol}&apikey=${TWELVE_KEY}`;
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    if (data.status === 'error') throw new Error(data.message);
+    return data;
+  } catch(e) {
+    console.warn(`Options fetch failed for ${symbol}:`, e.message);
+    return null;
+  }
+}
+
+function calcOptionsFlowScore(optionsData, currentPrice) {
+  if (!optionsData || !optionsData.calls || !optionsData.puts) return null;
+
+  const calls = optionsData.calls || [];
+  const puts = optionsData.puts || [];
+
+  if (calls.length === 0 && puts.length === 0) return null;
+
+  // Total call vs put volume
+  const callVol = calls.reduce((sum, c) => sum + (parseFloat(c.volume) || 0), 0);
+  const putVol  = puts.reduce((sum, p) => sum + (parseFloat(p.volume) || 0), 0);
+  const totalVol = callVol + putVol;
+  if (totalVol === 0) return null;
+
+  // Put/call ratio -- below 0.7 = bullish, above 1.2 = bearish
+  const pcRatio = putVol / (callVol || 1);
+
+  // Unusual activity -- vol vs open interest ratio
+  const callUOA = calls.reduce((sum, c) => {
+    const vol = parseFloat(c.volume) || 0;
+    const oi  = parseFloat(c.open_interest) || 1;
+    return sum + (vol > oi * 2 ? 1 : 0); // count unusual strikes
+  }, 0) / (calls.length || 1);
+
+  const putUOA = puts.reduce((sum, p) => {
+    const vol = parseFloat(p.volume) || 0;
+    const oi  = parseFloat(p.open_interest) || 1;
+    return sum + (vol > oi * 2 ? 1 : 0);
+  }, 0) / (puts.length || 1);
+
+  // Dollar-weighted call bias -- calls above current price (OTM calls = speculative bullish)
+  const bullishCallDollar = calls
+    .filter(c => parseFloat(c.strike) > currentPrice)
+    .reduce((sum, c) => sum + (parseFloat(c.volume) || 0) * (parseFloat(c.last_price) || 0), 0);
+
+  const totalCallDollar = calls
+    .reduce((sum, c) => sum + (parseFloat(c.volume) || 0) * (parseFloat(c.last_price) || 0), 0);
+
+  const bullishBias = totalCallDollar > 0 ? bullishCallDollar / totalCallDollar : 0.5;
+
+  // Score calculation 0-100
+  let score = 50; // neutral baseline
+
+  // P/C ratio contribution (max +/- 25pts)
+  if (pcRatio < 0.5) score += 25;
+  else if (pcRatio < 0.7) score += 15;
+  else if (pcRatio < 1.0) score += 5;
+  else if (pcRatio > 1.5) score -= 20;
+  else if (pcRatio > 1.2) score -= 10;
+
+  // Unusual call activity (max +20pts)
+  score += Math.round(callUOA * 20);
+
+  // Bullish dollar bias (max +/- 15pts)
+  score += Math.round((bullishBias - 0.5) * 30);
+
+  // Penalize if put unusual activity is high
+  score -= Math.round(putUOA * 10);
+
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
+function calcDarkPoolScore(bars) {
+  // Calculate dark pool proxy score from OHLCV patterns
+  // Institutional accumulation signatures:
+  // 1. Price rising on below-average volume (quiet accumulation)
+  // 2. Tight range with declining volume (coiling with institutional support)
+  // 3. Price holding key levels despite overall market weakness
+
+  if (!bars || bars.length < 20) return null;
+
+  const last = bars[bars.length-1];
+  const price = last.c;
+  const vols20 = bars.slice(-20).map(b => b.v);
+  const avgVol = vols20.reduce((a,b) => a+b, 0) / 20;
+
+  // Signal 1: Price trend with volume trend (divergence = accumulation)
+  const prices5 = bars.slice(-5).map(b => b.c);
+  const vols5   = bars.slice(-5).map(b => b.v);
+  const priceUp5  = prices5[4] > prices5[0];
+  const volDown5  = vols5[4] < vols5[0];
+  const quietAccum = priceUp5 && volDown5; // price up on falling vol = accumulation
+
+  // Signal 2: Volume drought with price stability
+  const volRatio = last.v / avgVol;
+  const recentVols = bars.slice(-5).map(b => b.v);
+  const avgRecentVol = recentVols.reduce((a,b) => a+b, 0) / 5;
+  const volDroughtRatio = avgRecentVol / avgVol;
+
+  // Signal 3: Price above VWAP proxy (20-day avg)
+  const closes20 = bars.slice(-20).map(b => b.c);
+  const ma20 = closes20.reduce((a,b) => a+b, 0) / 20;
+  const aboveMa20 = price > ma20;
+
+  // Signal 4: Consecutive closes above prior close (steady accumulation)
+  let consecutiveUp = 0;
+  for (let i = bars.length-1; i >= bars.length-5; i--) {
+    if (bars[i].c > bars[i-1].c) consecutiveUp++;
+    else break;
+  }
+
+  // Signal 5: Low volume selloffs (selling into strength = weak distribution)
+  const downDays = bars.slice(-10).filter((b,i,arr) => i>0 && b.c < arr[i-1].c);
+  const avgDownVol = downDays.length > 0
+    ? downDays.reduce((sum,b) => sum + b.v, 0) / downDays.length
+    : avgVol;
+  const weakDistribution = avgDownVol < avgVol * 0.8; // selloffs on below avg vol
+
+  // Score 0-100
+  let score = 40; // baseline
+  if (quietAccum)      score += 20;
+  if (aboveMa20)       score += 10;
+  if (volDroughtRatio < 0.7) score += 15;
+  if (consecutiveUp >= 3)    score += 10;
+  if (weakDistribution)      score += 15;
+  if (volRatio < 0.5)        score += 10; // very quiet today
+
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
+function calcSignals(bars, t, spyRet20) {
+  if (!bars || bars.length < 20) return null;
+  const last = bars[bars.length-1];
+  const price = last.c;
+  const bars10 = bars.slice(-10);
+  const high10 = Math.max(...bars10.map(b=>b.h));
+  const low10  = Math.min(...bars10.map(b=>b.l));
+  const cr = ((high10-low10)/price)*100;
+  const closes10 = bars10.map(b=>b.c);
+  const mean10 = closes10.reduce((a,b)=>a+b,0)/10;
+  const variance = closes10.reduce((a,b)=>a+Math.pow(b-mean10,2),0)/10;
+  const flat = (Math.sqrt(variance)/price)*100;
+  const vols20 = bars.slice(-20).map(b=>b.v);
+  const avgVol = vols20.reduce((a,b)=>a+b,0)/20;
+  const volRatio = last.v/avgVol;
+  const closes50 = bars.slice(-50).map(b=>b.c);
+  const ma50 = closes50.reduce((a,b)=>a+b,0)/closes50.length;
+  const aboveMa50 = price > ma50;
+  const atrs = bars.slice(-20).map(b=>b.h-b.l);
+  const atr5 = atrs.slice(-5).reduce((a,b)=>a+b,0)/5;
+  const atr20 = atrs.reduce((a,b)=>a+b,0)/20;
+  const atrContracting = atr5 < atr20*0.85;
+  const brkProx = high10>low10 ? ((price-low10)/(high10-low10))*100 : 50;
+  const high52 = Math.max(...bars.map(b=>b.h));
+  const low52  = Math.min(...bars.map(b=>b.l));
+  const rangePos52 = high52>low52 ? Math.round(((price-low52)/(high52-low52))*100) : 50;
+  const changePct = bars.length>=2 ? ((price-bars[bars.length-2].c)/bars[bars.length-2].c)*100 : 0;
+  const volDrought = t.sc ? volRatio<0.50 : volRatio<0.65;
+  const stockRet20 = bars.length>=20 ? ((price-bars[bars.length-20].c)/bars[bars.length-20].c)*100 : null;
+  const rsVsSpy = stockRet20!==null && spyRet20!==null ? stockRet20-spyRet20 : null;
+  const volExpansion = volRatio>=2.0 && changePct>0;
+
+  // Days in compression -- count consecutive days with tight range
+  let daysCoiling = 0;
+  for (let i=bars.length-1; i>=1; i--) {
+    const dayRange = ((bars[i].h - bars[i].l) / bars[i].c) * 100;
+    if (dayRange < 3.5) daysCoiling++;
+    else break;
+  }
+
+  // Breakout state classification
+  // 0=coiling, 1=early breakout (just starting), 2=breaking out (in progress), 3=late/extended
+  let breakoutState = 0;
+  let breakoutLabel = null;
+  const alreadyMoved = changePct > 5;
+  const partiallyMoved = changePct > 2 && changePct <= 5;
+  const volSpiking = volRatio >= 1.5;
+
+  if (alreadyMoved && volSpiking) {
+    breakoutState = 3;
+    breakoutLabel = "LATE ENTRY";
+  } else if (alreadyMoved && !volSpiking) {
+    breakoutState = 3;
+    breakoutLabel = "POSSIBLE LATE ENTRY";
+  } else if (partiallyMoved && volSpiking) {
+    breakoutState = 2;
+    breakoutLabel = "BREAKING OUT";
+  } else if (volRatio >= 1.5 && changePct > 0) {
+    breakoutState = 1;
+    breakoutLabel = "EARLY BREAKOUT";
+  }
+
+  // Time of day awareness
+  const now = new Date();
+  const hour = now.getHours();
+  const minute = now.getMinutes();
+  const totalMins = hour * 60 + minute;
+  const marketOpen = 9 * 60 + 30;   // 9:30am ET
+  const lateSession = 10 * 60 + 30; // 10:30am ET -- after this, moves are less clean
+  const isLateSession = totalMins >= lateSession;
+  const isPreMarket = totalMins < marketOpen;
+
+  return {
+    price, changePct, cr, flat, volRatio, volDrought, volExpansion,
+    aboveMa50, atrContracting, brkProx, rangePos52, rsVsSpy,
+    outperformingSpy: rsVsSpy!==null && rsVsSpy>0,
+    daysCoiling, breakoutState, breakoutLabel, isLateSession, isPreMarket
+  };
+}
+
+function calcPBS(t, live, liveScores) {
+  const ss = t.ss;
+  const ls = liveScores || {};
+
+  // Use live dark pool score when available, always use static/edited options flow
+  const dpScore = ls && ls.dp !== null && ls.dp !== undefined ? ls.dp : ss.dp;
+  const ofScore = ss.of; // options flow: use manual edit scores from Prospero
+
+  let score = 0;
+  if (live) {
+    if(live.aboveMa50) score+=8; if(live.atrContracting) score+=8;
+    if(live.cr<12) score+=8; if(live.brkProx>60) score+=6;
+    if(live.volDrought) score+=14; if(live.flat<2.5) score+=11;
+    if(live.outperformingSpy) score+=5;
+    if(dpScore>=80) score+=15; else if(dpScore>=70) score+=11; else if(dpScore>=60) score+=7;
+    if(ofScore>=70) score+=10; else if(ofScore>=60) score+=7; else if(ofScore>=50) score+=4;
+    if(ss.hc) score+=7; if(ss.au) score+=5; if(ss.st) score+=4; if(ss.bg) score+=4;
+  } else {
+    if(dpScore>=80) score+=30; else if(dpScore>=70) score+=22; else if(dpScore>=60) score+=14;
+    if(ofScore>=70) score+=20; else if(ofScore>=60) score+=14; else if(ofScore>=50) score+=8;
+    if(ss.hc) score+=14; if(ss.au) score+=10; if(ss.st) score+=8; if(ss.bg) score+=8;
+  }
+  if(t.extended) score=Math.min(score,35);
+  return Math.min(score,100);
+}
+
+const TAG_COLORS = {
+  "AI Infra":"#2979FF","AI Power":"#2979FF","Contract":"#7C4DFF",
+  "Analyst Up":"#00D084","Defense":"#FF4757","Defense AI":"#FF4757",
+  "Small Cap":"#FFA726","Energy":"#00BCD4","Nuclear":"#00BCD4",
+  "Quantum":"#00BCD4","Biotech":"#00BCD4","Space":"#00BCD4",
+  "BTC Pivot":"#FFA726","HPC":"#7C4DFF","IPO":"#7C4DFF",
+  "Turnaround":"#FFA726","Extended":"#FF4757","Travel":"#00D084",
+};
+
+function TagBadge({tag}) {
+  const color = TAG_COLORS[tag] || "#2979FF";
+  return (
+    <span style={{
+      fontSize:10,padding:"2px 6px",borderRadius:3,
+      background:`${color}20`,color,
+      border:`1px solid ${color}40`,
+      whiteSpace:"nowrap",display:"inline-block",letterSpacing:"0.3px",
+      textTransform:"uppercase"
+    }}>{tag}</span>
+  );
+}
+
+// ── CHART COMPONENT ──
+function ChartSVG({bars}) {
+  if (!bars || bars.length < 5) return null;
+  const last30 = bars.slice(-30);
+  const highs = last30.map(b => b.h);
+  const lows = last30.map(b => b.l);
+  const pMax = Math.max(...highs);
+  const pMin = Math.min(...lows);
+  const pRange = pMax - pMin || 1;
+  const W = 300, H = 90, VH = 20, CH = H - VH - 4;
+  const bw = W / last30.length;
+  const cw = Math.max(1, bw * 0.6);
+  const px = i => i * bw + bw / 2;
+  const py = p => ((pMax - p) / pRange) * CH;
+  const volMax = Math.max(...last30.map(b => b.v)) || 1;
+
+  // EMA helper
+  const ema = (period) => {
+    const k = 2/(period+1);
+    const r = new Array(bars.length).fill(null);
+    let s = 0;
+    for(let i=0;i<period;i++) s+=bars[i].c;
+    r[period-1]=s/period;
+    for(let i=period;i<bars.length;i++) r[i]=bars[i].c*k+r[i-1]*(1-k);
+    return r.slice(-30);
+  };
+  const e9=ema(9), e20=ema(20), e50=ema(50);
+  const makePath = arr => {
+    const pts=arr.map((v,i)=>v!=null?(px(i).toFixed(1)+","+py(v).toFixed(1)):null).filter(Boolean);
+    return pts.length>1?"M "+pts.join(" L "):"";
+  };
+
+  return (
+    <svg width="100%" viewBox={"0 0 "+W+" "+H} style={{display:"block",background:"#080A0D",borderRadius:3,marginTop:6}}>
+      {last30.map((b,i) => {
+        const up = b.c >= b.o;
+        const c = up ? "#00C076" : "#FF4757";
+        const top = Math.min(py(b.o),py(b.c));
+        const ht = Math.max(Math.abs(py(b.c)-py(b.o)),1);
+        const vh = Math.max(1,(b.v/volMax)*VH);
+        return (
+          <g key={i}>
+            <line x1={px(i)} y1={py(b.h)} x2={px(i)} y2={py(b.l)} stroke={c} strokeWidth="0.8"/>
+            <rect x={px(i)-cw/2} y={top} width={cw} height={ht} fill={c}/>
+            <rect x={px(i)-cw/2} y={CH+4+VH-vh} width={cw} height={vh} fill={up?"rgba(0,192,118,0.4)":"rgba(255,71,87,0.4)"}/>
+          </g>
+        );
+      })}
+      {makePath(e9)  && <path d={makePath(e9)}  fill="none" stroke="#FF6B6B" strokeWidth="1"/>}
+      {makePath(e20) && <path d={makePath(e20)} fill="none" stroke="#FFD700" strokeWidth="1"/>}
+      {makePath(e50) && <path d={makePath(e50)} fill="none" stroke="#4FC3F7" strokeWidth="1.2"/>}
+    </svg>
+  );
+}
+
+function MiniChart({bars}) {
+  const [open, setOpen] = useState(false);
+  const has = bars && bars.length >= 10;
+  return (
+    <div style={{borderTop:"1px solid rgba(255,255,255,0.06)",marginTop:8,paddingTop:5}}>
+      <div onClick={()=>setOpen(v=>!v)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",padding:"2px 0"}}>
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <span style={{fontSize:8,color:"#4A5568",letterSpacing:1,textTransform:"uppercase"}}>
+            {has ? "Chart 30d (" + bars.length + ")" : "Scan to load"}
+          </span>
+          {has && <><span style={{fontSize:7,color:"#FF6B6B"}}>9</span><span style={{fontSize:7,color:"#FFD700"}}>20</span><span style={{fontSize:7,color:"#4FC3F7"}}>50</span></>}
+        </div>
+        <span style={{fontSize:9,color:"#4A5568"}}>{open?"▲":"▼"}</span>
+      </div>
+      {open && has && <ChartSVG bars={bars}/>}
+      {open && !has && <div style={{padding:8,textAlign:"center",fontSize:9,color:"#4A5568"}}>Run scan first</div>}
+    </div>
+  );
+}
+
+
+function PBSBar({score,tier}) {
+  const colors = {gold:"#2979FF",green:"#00D084",amber:"#FFA726",extended:"#FF4757"};
+  const c = colors[tier] || "#FF4757";
+  return (
+    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+      <span style={{fontSize:9,color:"#4A5568",letterSpacing:1,textTransform:"uppercase",whiteSpace:"nowrap"}}>PBS</span>
+      <div style={{flex:1,height:4,background:"#121620",borderRadius:2,overflow:"hidden"}}>
+        <div style={{width:`${score}%`,height:"100%",background:`linear-gradient(90deg,${c},${c}cc)`,transition:"width 0.8s ease",borderRadius:2}}/>
+      </div>
+      <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:c,letterSpacing:1,minWidth:28}}>{score}</span>
+    </div>
+  );
+}
+
+function LiveMetric({label,value,color}) {
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:2,alignItems:"center"}}>
+      <div style={{fontSize:9,color:"#4A5568",textTransform:"uppercase",letterSpacing:"0.5px",textAlign:"center"}}>{label}</div>
+      <div style={{fontSize:13,fontWeight:600,color:color||"#C8D4E0",textAlign:"center"}}>{value}</div>
+    </div>
+  );
+}
+
+function SignalDot({pass}) {
+  return <div style={{width:5,height:5,borderRadius:"50%",background:pass?"#00D084":"#4A5568",flexShrink:0}}/>;
+}
+
+function TickerCard({t, live, pbs, isLeader, spyRet20, onEdit, hasOverride, liveScores, bars}) {
+  const effectiveExtended = t._effectiveExtended !== undefined ? t._effectiveExtended : t.extended;
+  const rehabilitated = t._rehabilitated || false;
+  const tier = effectiveExtended ? "extended" : pbs>=80?"gold":pbs>=65?"green":"amber";
+  const tierColor = effectiveExtended ? "#FF4757" : {gold:"#2979FF",green:"#00D084",amber:"#FFA726"}[tier] || "#FFA726";
+  const daysE = daysToEarnings(t.symbol);
+  const earnsWarn = daysE!==null && daysE<=7;
+  const setupStatus = !effectiveExtended ? getSetupStatus(live, t) : null;
+  const compressionAlert = setupStatus?.type === "compression";
+  const volExpansion = live && live.volExpansion && setupStatus?.type !== "late";
+
+  const borderColor = effectiveExtended ? "rgba(255,71,87,0.35)" :
+                      compressionAlert ? "rgba(0,208,132,0.5)" :
+                      setupStatus?.type === "late" ? "rgba(255,71,87,0.4)" :
+                      setupStatus?.type === "breaking" ? "rgba(124,77,255,0.4)" :
+                      setupStatus?.type === "early" ? "rgba(255,167,38,0.4)" :
+                      tier==="gold" ? "rgba(41,121,255,0.35)" :
+                      earnsWarn ? "rgba(255,167,38,0.3)" : "rgba(255,255,255,0.06)";
+  const glowStyle = effectiveExtended ? {boxShadow:"0 0 12px rgba(255,71,87,0.06)"} :
+                    compressionAlert ? {boxShadow:"0 0 16px rgba(0,208,132,0.12)"} :
+                    setupStatus?.type === "late" ? {boxShadow:"0 0 12px rgba(255,71,87,0.08)"} :
+                    setupStatus?.type === "breaking" ? {boxShadow:"0 0 12px rgba(124,77,255,0.08)"} : {};
+  const extendedCardBg = effectiveExtended ? "linear-gradient(135deg,rgba(255,71,87,0.04) 0%,#0D1017 60%)" : null;
+
+  const signals = [
+    {label:"Above 50MA",pass:live?.aboveMa50},
+    {label:"ATR Contracting",pass:live?.atrContracting},
+    {label:"Range <12%",pass:live?live.cr<12:null},
+    {label:"Near Resistance",pass:live?live.brkProx>60:null},
+    {label:"Vol Drought",pass:live?.volDrought},
+    {label:"Price Flat",pass:live?live.flat<2.5:null},
+    {label:`DP ${liveScores[t.symbol]?.dp != null ? liveScores[t.symbol].dp+'↻' : t.ss.dp}`,pass:(liveScores[t.symbol]?.dp ?? t.ss.dp)>=65},
+    {label:`Flow ${t.ss.of}`,pass:t.ss.of>=55},
+    {label:"Contract",pass:t.ss.hc},
+    {label:"Analyst Up",pass:t.ss.au},
+    {label:"Sector Tail",pass:t.ss.st},
+    {label:"Backlog Up",pass:t.ss.bg},
+    {label:"RS vs SPY",pass:live?.outperformingSpy},
+  ];
+
+  return (
+    <div style={{
+      background:extendedCardBg||"#0D1017",border:`1px solid ${borderColor}`,
+      borderRadius:8,padding:"11px 13px",position:"relative",
+      overflow:"hidden",...glowStyle,marginBottom:8
+    }}>
+      <div style={{position:"absolute",left:0,top:0,bottom:0,width:3,background:t.extended?"#FF4757":tierColor,borderRadius:"8px 0 0 8px"}}/>
+
+      {effectiveExtended && (
+        <div style={{background:"rgba(255,71,87,0.08)",border:"1px solid rgba(255,71,87,0.25)",color:"#FF4757",fontSize:10,letterSpacing:1,padding:"4px 8px",borderRadius:3,marginBottom:6,textAlign:"center",textTransform:"uppercase",fontWeight:600}}>
+          ⚠ SETUP FIRED — DO NOT CHASE — WAIT FOR NEW BASE
+        </div>
+      )}
+      {setupStatus && (
+        <div style={{background:setupStatus.bg,border:`1px solid ${setupStatus.border}`,color:setupStatus.color,fontSize:10,letterSpacing:1,padding:"4px 8px",borderRadius:3,marginBottom:6,textAlign:"center",textTransform:"uppercase",fontWeight:600}}>
+          {setupStatus.type==="compression"?"●":setupStatus.type==="breaking"?"⚡":setupStatus.type==="late"?"⚠":"▶"} {setupStatus.label}
+          {live?.daysCoiling>0 && setupStatus.type==="compression" && <span style={{opacity:0.7,fontWeight:400}}> — {live.daysCoiling}d coiling</span>}
+          {live?.isLateSession && setupStatus.type==="compression" && <span style={{opacity:0.7,fontWeight:400}}> — Late session</span>}
+        </div>
+      )}
+      {volExpansion && !setupStatus && (
+        <div style={{background:"rgba(124,77,255,0.08)",border:"1px solid rgba(124,77,255,0.3)",color:"#B39DDB",fontSize:10,letterSpacing:1,padding:"3px 8px",borderRadius:3,marginBottom:6,textAlign:"center",textTransform:"uppercase"}}>
+          ⚡ VOL EXPANSION — {live.volRatio.toFixed(1)}x avg volume
+        </div>
+      )}
+      {earnsWarn && (
+        <div style={{background:"rgba(255,167,38,0.08)",border:"1px solid rgba(255,167,38,0.25)",color:"#FFA726",fontSize:10,letterSpacing:1,padding:"3px 8px",borderRadius:3,marginBottom:6,textAlign:"center",textTransform:"uppercase"}}>
+          ⚠ EARNINGS in {daysE===0?"TODAY":`${daysE}d`} — IV crush risk — confirm before entry
+        </div>
+      )}
+
+      <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:6}}>
+        <div style={{flex:1}}>
+          <div style={{display:"flex",alignItems:"center",gap:6}}>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,color:"#fff",lineHeight:1}}>{t.symbol}</div>
+            <button onClick={onEdit} style={{padding:"2px 6px",fontSize:8,background:hasOverride?"rgba(201,168,76,0.2)":"rgba(255,255,255,0.06)",border:hasOverride?"1px solid rgba(201,168,76,0.3)":"1px solid rgba(255,255,255,0.1)",color:hasOverride?"#C9A84C":"#4A5568",borderRadius:3,cursor:"pointer",letterSpacing:1,textTransform:"uppercase"}}>{hasOverride?"✓ Edited":"✎ Edit"}</button>
+          </div>
+          <div style={{fontSize:9,color:"#4A5568",marginTop:2}}>{t.name} · {t.sector}{t.sc?" · SC":""}</div>
+        </div>
+        <div style={{textAlign:"right"}}>
+          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:17,color:"#fff",letterSpacing:1}}>
+            {live ? `$${live.price.toFixed(2)}` : "—"}
+          </div>
+          <div style={{fontSize:11,fontWeight:600,color:live?(live.changePct>=0?"#00D084":"#FF4757"):"#4A5568"}}>
+            {live ? `${live.changePct>=0?"+":""}${live.changePct.toFixed(2)}%` : "—"}
+          </div>
+        </div>
+      </div>
+
+      <PBSBar score={pbs} tier={tier}/>
+
+      <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:8}}>
+        {t.tags.map(tag=><TagBadge key={tag} tag={tag}/>)}
+        {daysE!==null && <span style={{fontSize:10,padding:"2px 6px",borderRadius:3,background:"rgba(255,167,38,0.15)",color:"#FFA726",border:"1px solid rgba(255,167,38,0.4)",whiteSpace:"nowrap"}}>E:{daysE===0?"TODAY":`${daysE}d`}</span>}
+        {isLeader && <span style={{fontSize:10,padding:"2px 6px",borderRadius:3,background:"rgba(201,168,76,0.2)",color:"#C9A84C",border:"1px solid rgba(201,168,76,0.3)"}}>♛ LEADER</span>}
+        {liveScores[t.symbol]?.dp != null && <span style={{fontSize:10,padding:"2px 6px",borderRadius:3,background:"rgba(0,208,132,0.12)",color:"#00D084",border:"1px solid rgba(0,208,132,0.25)"}}>DP:{liveScores[t.symbol].dp}↻</span>}
+        {rehabilitated && <span style={{fontSize:10,padding:"2px 6px",borderRadius:3,background:"rgba(0,208,132,0.15)",color:"#00D084",border:"1px solid rgba(0,208,132,0.4)"}}>↻ NEW BASE FORMING</span>}
+        {live?.daysCoiling>0 && <span style={{fontSize:10,padding:"2px 6px",borderRadius:3,background:"rgba(201,168,76,0.08)",color:"#C9A84C",border:"1px solid rgba(201,168,76,0.2)"}}>{live.daysCoiling}d coiling</span>}
+        {live?.isLateSession && live?.changePct>2 && <span style={{fontSize:10,padding:"2px 6px",borderRadius:3,background:"rgba(255,71,87,0.1)",color:"#FF4757",border:"1px solid rgba(255,71,87,0.2)"}}>Late Session</span>}
+        {live?.rsVsSpy!=null && <span style={{fontSize:10,padding:"2px 6px",borderRadius:3,background:live.rsVsSpy>=0?"rgba(0,208,132,0.15)":"rgba(255,71,87,0.12)",color:live.rsVsSpy>=0?"#00D084":"#FF4757",border:`1px solid ${live.rsVsSpy>=0?"rgba(0,208,132,0.3)":"rgba(255,71,87,0.2)"}`}}>RS {live.rsVsSpy>=0?"+":""}{live.rsVsSpy.toFixed(1)}%</span>}
+        {volExpansion && <span style={{fontSize:10,padding:"2px 6px",borderRadius:3,background:"rgba(124,77,255,0.15)",color:"#B39DDB",border:"1px solid rgba(124,77,255,0.4)"}}>⚡{live.volRatio.toFixed(1)}x</span>}
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:4,marginBottom:8,padding:"6px 0",borderTop:"1px solid rgba(255,255,255,0.06)",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
+        <LiveMetric label="Range%" value={live?`${live.cr.toFixed(1)}%`:"--"} color={live?(live.cr<8?"#00D084":live.cr<12?"#FFA726":"#FF4757"):null}/>
+        <LiveMetric label="Flatness" value={live?`${live.flat.toFixed(1)}%`:"--"} color={live?(live.flat<2?"#00D084":live.flat<3?"#FFA726":"#FF4757"):null}/>
+        <LiveMetric label="Vol Ratio" value={live?`${live.volRatio.toFixed(2)}x`:"--"} color={live?(live.volDrought?"#00D084":live.volRatio<0.85?"#FFA726":"#FF4757"):null}/>
+        <LiveMetric label="Brk Prox" value={live?`${Math.round(live.brkProx)}%`:"--"} color={live?(live.brkProx>65?"#00D084":live.brkProx>40?"#FFA726":"#C8D4E0"):null}/>
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:3,marginBottom:8}}>
+        {signals.map(s=>(
+          <div key={s.label} style={{display:"flex",alignItems:"center",gap:4,fontSize:9,padding:"3px 5px",borderRadius:3,background:"#121620",color:s.pass?"#00D084":"#4A5568"}}>
+            <SignalDot pass={!!s.pass}/>
+            {s.label}
+          </div>
+        ))}
+      </div>
+
+      <div style={{fontSize:10,color:"#C8D4E0",lineHeight:1.5,marginBottom:8,opacity:0.8}}>{t.thesis}</div>
+
+      <MiniChart bars={bars || null}/>
+
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",paddingTop:6,borderTop:"1px solid rgba(255,255,255,0.06)",gap:6}}>
+        <span style={{fontSize:9,color:"#4A5568"}}>Links</span>
+        <div style={{display:"flex",gap:5,marginLeft:"auto"}}>
+          <button onClick={()=>{ navigator.clipboard?.writeText(t.symbol); }} style={{padding:"3px 8px",fontSize:9,background:"rgba(41,121,255,0.12)",border:"1px solid rgba(41,121,255,0.2)",color:"#64B5F6",borderRadius:3,cursor:"pointer"}}>Copy {t.symbol}</button>
+          <a href={`https://infolib.org/market-dashboard/dark-pools-data?symbol=${t.symbol}`} target="_blank" rel="noreferrer" style={{padding:"3px 8px",fontSize:9,background:"rgba(0,188,212,0.12)",border:"1px solid rgba(0,188,212,0.2)",color:"#4DD0E1",borderRadius:3,textDecoration:"none"}}>InfoLib →</a>
+          <a href={`https://www.whalestream.com/market-data/top-dark-pool-flow?symbol=${t.symbol}`} target="_blank" rel="noreferrer" style={{padding:"3px 8px",fontSize:9,background:"rgba(124,77,255,0.12)",border:"1px solid rgba(124,77,255,0.2)",color:"#B39DDB",borderRadius:3,textDecoration:"none"}}>Whales →</a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ExtendedRow({t,live}) {
+  return (
+    <div style={{background:"#0D1017",border:"1px solid rgba(255,71,87,0.12)",borderRadius:5,padding:"6px 10px",display:"flex",alignItems:"center",gap:8,opacity:0.6,marginBottom:3}}>
+      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,color:"#FF4757",letterSpacing:1,width:52}}>{t.symbol}</div>
+      <div style={{fontSize:9,color:"#4A5568",flex:1}}>{t.name}</div>
+      <div style={{fontSize:11,color:"#C8D4E0",fontFamily:"'Bebas Neue',sans-serif"}}>{live?`$${live.price.toFixed(2)}`:"--"}</div>
+      <div style={{fontSize:9,color:"#FF4757",textTransform:"uppercase",letterSpacing:1}}>Fired</div>
+    </div>
+  );
+}
+
+// ── SCORE EDITOR MODAL ──
+function ScoreEditor({t, onSave, onClose}) {
+  const [dp, setDp] = useState(t.ss.dp);
+  const [of_, setOf] = useState(t.ss.of);
+  const [au, setAu] = useState(t.ss.au);
+  const [hc, setHc] = useState(t.ss.hc);
+  const [bg, setBg] = useState(t.ss.bg);
+  const [extended, setExtended] = useState(t.extended);
+
+  const previewPBS = calcPBS({...t, ss:{...t.ss,dp,of:of_,au,hc,bg}, extended}, null);
+
+  return (
+    <div onClick={e=>{if(e.target===e.currentTarget)onClose()}} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.88)",zIndex:300,display:"flex",alignItems:"flex-end"}}>
+      <div style={{background:"#0D1017",borderTop:"1px solid rgba(201,168,76,0.2)",borderRadius:"16px 16px 0 0",padding:"20px 16px 32px",width:"100%",maxHeight:"80vh",overflowY:"auto"}}>
+        
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+          <div>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,color:"#C9A84C"}}>{t.symbol} — Score Editor</div>
+            <div style={{fontSize:9,color:"#4A5568",letterSpacing:1,textTransform:"uppercase",marginTop:2}}>{t.name} · Update from Prospero</div>
+          </div>
+          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:previewPBS>=80?"#2979FF":previewPBS>=65?"#00D084":"#FFA726"}}>{previewPBS}</div>
+        </div>
+
+        {/* Dark Pool */}
+        <div style={{marginBottom:14}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+            <span style={{fontSize:10,letterSpacing:1,textTransform:"uppercase",color:"#4A5568"}}>Dark Pool Score</span>
+            <span style={{fontSize:14,fontWeight:600,color:dp>=75?"#C9A84C":dp>=65?"#00D084":"#FFA726",fontFamily:"'Bebas Neue',sans-serif"}}>{dp}</span>
+          </div>
+          <input type="range" min={0} max={100} value={dp} onChange={e=>setDp(Number(e.target.value))}
+            style={{width:"100%",accentColor:"#C9A84C",height:4,cursor:"pointer"}}/>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:8,color:"#4A5568",marginTop:2}}>
+            <span>0</span><span style={{color:"#FFA726"}}>65 threshold</span><span style={{color:"#C9A84C"}}>75+ elite</span><span>100</span>
+          </div>
+        </div>
+
+        {/* Options Flow */}
+        <div style={{marginBottom:14}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+            <span style={{fontSize:10,letterSpacing:1,textTransform:"uppercase",color:"#4A5568"}}>Options Flow Score</span>
+            <span style={{fontSize:14,fontWeight:600,color:of_>=70?"#C9A84C":of_>=55?"#00D084":"#FFA726",fontFamily:"'Bebas Neue',sans-serif"}}>{of_}</span>
+          </div>
+          <input type="range" min={0} max={100} value={of_} onChange={e=>setOf(Number(e.target.value))}
+            style={{width:"100%",accentColor:"#2979FF",height:4,cursor:"pointer"}}/>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:8,color:"#4A5568",marginTop:2}}>
+            <span>0</span><span style={{color:"#FFA726"}}>55 threshold</span><span style={{color:"#C9A84C"}}>70+ elite</span><span>100</span>
+          </div>
+        </div>
+
+        {/* Toggle signals */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}}>
+          {[
+            ["Analyst Upgrade",au,setAu],
+            ["Contract Catalyst",hc,setHc],
+            ["Backlog Growing",bg,setBg],
+            ["Mark as Extended",extended,setExtended],
+          ].map(([label,val,setter])=>(
+            <button key={label} onClick={()=>setter(v=>!v)} style={{padding:"8px 10px",borderRadius:6,border:`1px solid ${val?"rgba(0,208,132,0.3)":"rgba(255,255,255,0.06)"}`,background:val?"rgba(0,208,132,0.08)":"transparent",color:val?"#00D084":"#4A5568",fontSize:9,letterSpacing:0.5,cursor:"pointer",textAlign:"left"}}>
+              <span style={{marginRight:6}}>{val?"●":"○"}</span>{label}
+            </button>
+          ))}
+        </div>
+
+        {/* PBS Preview bar */}
+        <div style={{background:"#121620",borderRadius:6,padding:"10px 12px",marginBottom:14,border:"1px solid rgba(255,255,255,0.06)"}}>
+          <div style={{fontSize:9,color:"#4A5568",letterSpacing:1,textTransform:"uppercase",marginBottom:6}}>PBS Preview</div>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <div style={{flex:1,height:6,background:"#080A0D",borderRadius:3,overflow:"hidden"}}>
+              <div style={{width:`${previewPBS}%`,height:"100%",background:previewPBS>=80?"linear-gradient(90deg,#C9A84C,#E8C97A)":previewPBS>=65?"linear-gradient(90deg,#00D084,#00F0A0)":"linear-gradient(90deg,#FFA726,#FFD54F)",transition:"width 0.3s ease",borderRadius:3}}/>
+            </div>
+            <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:previewPBS>=80?"#2979FF":previewPBS>=65?"#00D084":"#FFA726"}}>{previewPBS}/100</span>
+          </div>
+          <div style={{fontSize:8,color:"#4A5568",marginTop:4}}>
+            {previewPBS>=80?"PRIME SETUP — Gold tier":previewPBS>=65?"READY — Green tier":"WATCH — Amber tier"}
+          </div>
+        </div>
+
+        <button onClick={()=>onSave({dp,of:of_,au,hc,bg,extended})} style={{width:"100%",padding:13,background:"rgba(201,168,76,0.12)",border:"1px solid rgba(201,168,76,0.2)",color:"#C9A84C",fontFamily:"'JetBrains Mono',monospace",fontSize:11,letterSpacing:2,borderRadius:6,cursor:"pointer",textTransform:"uppercase",marginBottom:8}}>
+          ✓ Save Scores
+        </button>
+        <button onClick={onClose} style={{width:"100%",padding:10,background:"transparent",border:"1px solid rgba(255,255,255,0.06)",color:"#4A5568",fontFamily:"'JetBrains Mono',monospace",fontSize:10,letterSpacing:1,borderRadius:6,cursor:"pointer"}}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default function Scanner() {
+  const [liveData, setLiveData] = useState({});
+  const [spyRet20, setSpyRet20] = useState(null);
+  const [scanning, setScanning] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [currentTab, setCurrentTab] = useState("all");
+  const [currentSort, setCurrentSort] = useState("pbs");
+  const [lastUpdate, setLastUpdate] = useState(null);
+  const [statusLabel, setStatusLabel] = useState("Full");
+  const [showExtended, setShowExtended] = useState(false);
+  const [showAlertModal, setShowAlertModal] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [liveScores, setLiveScores] = useState({});
+  // bars stored inside liveData[sym].bars
+  const [editingTicker, setEditingTicker] = useState(null);
+  const [scoreOverrides, setScoreOverrides] = useState({});
+  const scanRef = useRef(false);
+
+  // Apply overrides to ticker
+  const getTickerWithOverrides = useCallback((t) => {
+    const ov = scoreOverrides[t.symbol];
+    if (!ov) return t;
+    return {
+      ...t,
+      ss: {...t.ss, dp:ov.dp, of:ov.of, au:ov.au, hc:ov.hc, bg:ov.bg},
+      extended: ov.extended !== undefined ? ov.extended : t.extended
+    };
+  }, [scoreOverrides]);
+
+  const getPBS = useCallback((t) => calcPBS(getTickerWithOverrides(t), liveData[t.symbol]?.live || null, liveScores[t.symbol] || null), [liveData, liveScores, getTickerWithOverrides]);
+
+  // Sector strength -- average PBS per tab
+  const sectorStrength = useMemo(() => {
+    const tabs = ['ai','defense','emerging','momentum']; // market excluded from sector strength
+    const result = {};
+    tabs.forEach(tab => {
+      const names = TICKERS.filter(t => t.tab===tab && !t.extended);
+      if (names.length === 0) { result[tab] = 0; return; }
+      const avg = names.reduce((sum, t) => {
+        const ov = scoreOverrides[t.symbol];
+        const tt = ov ? {...t, ss:{...t.ss, dp:ov.dp, of:ov.of}} : t;
+        return sum + calcPBS(tt, liveData[t.symbol]?.live||null, liveScores[t.symbol]||null);
+      }, 0) / names.length;
+      result[tab] = Math.round(avg);
+    });
+    return result;
+  }, [liveData, liveScores, scoreOverrides]);
+
+  const strongestSector = useMemo(() => {
+    return Object.entries(sectorStrength).sort((a,b)=>b[1]-a[1])[0]?.[0] || null;
+  }, [sectorStrength]);
+
+  const getFiltered = useCallback(() => {
+    let list = currentTab==="all" ? TICKERS : TICKERS.filter(t=>t.tab===currentTab);
+    const seen={};
+    list = list.filter(t=>{ if(seen[t.symbol]) return false; seen[t.symbol]=true; return true; });
+    const active = list.map(getTickerWithOverrides).map(t=>{
+      const live = liveData[t.symbol]?.live || null;
+      const rehabilitated = isRehabilitatedSetup(t, live);
+      const effectiveExtended = t.extended && !rehabilitated;
+      return {...t,
+        _pbs: effectiveExtended ? 0 : calcPBS(t, live, liveScores[t.symbol]||null),
+        _rehabilitated: rehabilitated,
+        _effectiveExtended: effectiveExtended
+      };
+    });
+    const extended = [];
+    const tabGroups={};
+    active.forEach(t=>{ if(!tabGroups[t.tab]||t._pbs>tabGroups[t.tab]._pbs) tabGroups[t.tab]=t; });
+    const sorted = [...active].sort((a,b)=>{
+      // Always push extended (non-rehabilitated) to bottom
+      if(a._effectiveExtended && !b._effectiveExtended) return 1;
+      if(!a._effectiveExtended && b._effectiveExtended) return -1;
+      if(currentSort==="pbs") return b._pbs-a._pbs;
+      if(currentSort==="compression"){ const la=liveData[a.symbol]?.live,lb=liveData[b.symbol]?.live; return (la?la.cr:999)-(lb?lb.cr:999); }
+      if(currentSort==="vol"){ const la=liveData[a.symbol]?.live,lb=liveData[b.symbol]?.live; return (la?la.volRatio:999)-(lb?lb.volRatio:999); }
+      if(currentSort==="dp") return b.ss.dp-a.ss.dp;
+      if(currentSort==="earn"){ const da=daysToEarnings(a.symbol)||9999,db=daysToEarnings(b.symbol)||9999; return da-db; }
+      return 0;
+    });
+    return { active: sorted.map(t=>({...t,_isLeader:tabGroups[t.tab]?.symbol===t.symbol})), extended };
+  }, [currentTab, currentSort, liveData, liveScores, scoreOverrides, getTickerWithOverrides]);
+
+  const startScan = useCallback(async (quickMode) => {
+    if (scanRef.current) return;
+    scanRef.current = true;
+    setScanning(true);
+    setProgress(0);
+
+    const allSyms = [...new Set(TICKERS.map(t=>t.symbol))];
+    const MARKET_SYMS = ['SPY','QQQ','IWM']; // always scan these
+    const symbols = quickMode
+      ? (() => {
+          const scored = TICKERS.filter(t=>!t.extended).map(t=>{
+            const ov = scoreOverrides[t.symbol];
+            const dp = ov ? ov.dp : t.ss.dp;
+            const of_ = ov ? ov.of : t.ss.of;
+            const live = liveData[t.symbol]?.live;
+            const isAlert = live && isGenuineCompression(live, t);
+            const isRehab = isRehabilitatedSetup(t, live);
+            return {sym:t.symbol, score:(isAlert||isRehab)?999:dp+of_};
+          }).sort((a,b)=>b.score-a.score).slice(0,22).map(x=>x.sym);
+          return [...new Set([...MARKET_SYMS, ...scored])];
+        })()
+      : allSyms;
+
+    let done = 0;
+    const total = symbols.length + 1; // +1 for SPY
+
+    setStatusLabel("Loading SPY...");
+
+    // Fetch SPY first
+    try {
+      const spyBars = await fetchTwelveData("SPY");
+      if (spyBars.length >= 20) {
+        const ret = ((spyBars[spyBars.length-1].c - spyBars[spyBars.length-20].c)/spyBars[spyBars.length-20].c)*100;
+        setSpyRet20(ret);
+      }
+    } catch(e) { console.warn("SPY fetch failed:", e.message); }
+    done++;
+    setProgress(Math.round((done/total)*100));
+    setStatusLabel("Scanning...");
+
+    // Fetch tickers in batches of 3
+    const BATCH = 3;
+    for (let i=0; i<symbols.length; i+=BATCH) {
+      if (!scanRef.current) break;
+      const batch = symbols.slice(i, i+BATCH);
+      await Promise.all(batch.map(async sym => {
+        try {
+          const bars = await fetchTwelveData(sym);
+          const t = TICKERS.find(x=>x.symbol===sym);
+          const live = t ? calcSignals(bars, t, spyRet20) : null;
+
+          // bars stored in liveData below
+
+          // Calculate live dark pool score from OHLCV price/volume patterns
+          const liveDPScore = bars ? calcDarkPoolScore(bars) : null;
+
+          // Store live dark pool score -- options flow requires server-side API, not available in browser
+          if (liveDPScore !== null) {
+            setLiveScores(prev => ({...prev, [sym]: {dp: liveDPScore, of: null}}));
+          }
+
+          setLiveData(prev=>({...prev,[sym]:{live,bars:bars||[],error:false}}));
+        } catch(e) {
+          console.warn('Scan failed for ' + sym + ':', e.message);
+          setLiveData(prev=>({...prev,[sym]:{live:null,bars:[],error:true,errMsg:e.message}}));
+        }
+        done++;
+        setProgress(Math.round((done/total)*100));
+      }));
+      await new Promise(r=>setTimeout(r,200));
+    }
+
+    setScanning(false);
+    scanRef.current = false;
+    setStatusLabel("Full");
+    setProgress(0);
+    setLastUpdate(new Date());
+  }, [spyRet20]);
+
+  // Stats
+  const allUniq = [...new Map(TICKERS.map(t=>[t.symbol,t])).values()];
+  const activeAll = allUniq.filter(t=>!t.extended);
+  const compressionCount = activeAll.filter(t=>{ const l=liveData[t.symbol]?.live; return isGenuineCompression(l, t); }).length;
+  const primeCount = activeAll.filter(t=>calcPBS(t,liveData[t.symbol]?.live||null)>=75).length;
+  const earningsCount = allUniq.filter(t=>{ const d=daysToEarnings(t.symbol); return d!==null&&d<=7; }).length;
+  const compressionAlerts = activeAll.filter(t=>{ const l=liveData[t.symbol]?.live; return isGenuineCompression(l, t); });
+
+  // Market health context
+  const marketHealth = useMemo(() => {
+    const spyLive = liveData['SPY']?.live;
+    const qqqLive = liveData['QQQ']?.live;
+    const iwmLive = liveData['IWM']?.live;
+    if (!spyLive && !qqqLive && !iwmLive) return null;
+    const spyOk = spyLive ? spyLive.aboveMa50 && spyLive.changePct > -1 : null;
+    const qqqOk = qqqLive ? qqqLive.aboveMa50 && qqqLive.changePct > -1 : null;
+    const iwmOk = iwmLive ? iwmLive.aboveMa50 && iwmLive.changePct > -1 : null;
+    const bullish = [spyOk, qqqOk, iwmOk].filter(x=>x===true).length;
+    const bearish = [spyOk, qqqOk, iwmOk].filter(x=>x===false).length;
+    return {
+      spyLive, qqqLive, iwmLive,
+      tape: bullish >= 2 ? 'RISK-ON' : bearish >= 2 ? 'RISK-OFF' : 'MIXED',
+      color: bullish >= 2 ? '#00D084' : bearish >= 2 ? '#FF4757' : '#FFA726'
+    };
+  }, [liveData]);
+  const lateEntryAlerts = activeAll.filter(t=>{ const l=liveData[t.symbol]?.live; return l&&l.breakoutState===3; });
+  const breakingOutAlerts = activeAll.filter(t=>{ const l=liveData[t.symbol]?.live; return l&&(l.breakoutState===1||l.breakoutState===2); });
+  const volExpAlerts = activeAll.filter(t=>liveData[t.symbol]?.live?.volExpansion);
+  const earningsAlerts = allUniq.filter(t=>{ const d=daysToEarnings(t.symbol); return d!==null&&d<=7; });
+
+  const handleSaveScores = useCallback((sym, updates) => {
+    setScoreOverrides(prev => ({...prev, [sym]: {...updates, _updatedAt: Date.now()}}));
+    setEditingTicker(null);
+  }, []);
+
+  // Score audit reminder -- count days since any score was manually updated
+  const daysSinceAudit = useMemo(() => {
+    const updates = Object.values(scoreOverrides)
+      .map(v => v._updatedAt || 0)
+      .filter(t => t > 0);
+    if (updates.length === 0) return 999;
+    const lastUpdate = Math.max(...updates);
+    return Math.floor((Date.now() - lastUpdate) / (1000*60*60*24));
+  }, [scoreOverrides]);
+
+  const { active, extended } = getFiltered();
+
+  const alertText = [
+    `GS Bull Scanner — Alert List`,
+    `Generated: ${new Date().toLocaleDateString()}`,
+    "",
+    "=== COMPRESSION ALERTS ===",
+    ...compressionAlerts.map(t=>{ const l=liveData[t.symbol]?.live; return `${t.symbol} @ $${l?l.price.toFixed(2):"N/A"} — PBS:${calcPBS(t,l||null)}`; }),
+    "",
+    "=== PRIME SETUPS (PBS 75+) ===",
+    ...activeAll.filter(t=>calcPBS(t,liveData[t.symbol]?.live||null)>=75).sort((a,b)=>calcPBS(b,liveData[b.symbol]?.live||null)-calcPBS(a,liveData[a.symbol]?.live||null)).map(t=>{ const l=liveData[t.symbol]?.live; const e=daysToEarnings(t.symbol); return `${t.symbol} @ $${l?l.price.toFixed(2):"N/A"} — PBS:${calcPBS(t,l||null)}${e!==null?` [EARNS ${e}d]`:""}`; }),
+    "",
+    "=== EARNINGS THIS WEEK ===",
+    ...(earningsAlerts.length>0 ? earningsAlerts.map(t=>`${t.symbol} — ${EARNINGS_DATES[t.symbol]} (${daysToEarnings(t.symbol)}d)`) : ["None within 7 days"]),
+  ].join("\n");
+
+  const tabs = ["all","market","ai","defense","emerging","momentum"];
+  const tabLabels = ["ALL","MKT","AI","DEF","EMRG","MOM"];
+
+  return (
+    <div style={{background:"#080A0D",minHeight:"100vh",color:"#C8D4E0",fontFamily:"'JetBrains Mono',monospace",maxWidth:480,margin:"0 auto"}}>
+      {/* Header */}
+      <div style={{padding:"14px 16px 10px",borderBottom:"1px solid rgba(201,168,76,0.15)",background:"linear-gradient(180deg,rgba(201,168,76,0.06) 0%,transparent 100%)",position:"sticky",top:0,zIndex:100,backdropFilter:"blur(20px)"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+          <div>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:26,letterSpacing:3,color:"#C9A84C",lineHeight:1}}>GS BULL SCANNER</div>
+            <div style={{fontSize:9,letterSpacing:2,textTransform:"uppercase",color:"#4A5568",marginTop:2}}>Pre-Breakout Intelligence v10 · Live Data</div>
+          </div>
+          <div style={{background:"rgba(201,168,76,0.12)",border:"1px solid rgba(201,168,76,0.15)",color:"#C9A84C",fontSize:10,letterSpacing:1,padding:"3px 8px",borderRadius:2}}>v10.0</div>
+        </div>
+        <div style={{display:"flex",gap:3,background:"#0D1017",borderRadius:6,padding:3,border:"1px solid rgba(255,255,255,0.06)"}}>
+          {tabs.map((tab,i)=>(
+            <button key={tab} onClick={()=>setCurrentTab(tab)} style={{flex:1,padding:"5px 3px",fontSize:9,letterSpacing:1,textTransform:"uppercase",borderRadius:4,border:currentTab===tab?"1px solid rgba(201,168,76,0.15)":"none",background:currentTab===tab?"rgba(201,168,76,0.12)":"transparent",color:currentTab===tab?"#C9A84C":"#4A5568",cursor:"pointer"}}>{tabLabels[i]}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Progress */}
+      <div style={{height:3,background:"#121620"}}>
+        <div style={{width:`${progress}%`,height:"100%",background:"linear-gradient(90deg,#C9A84C,#00D084)",transition:"width 0.3s ease"}}/>
+      </div>
+
+      {/* Stats */}
+      <div style={{padding:"8px 16px",display:"flex",gap:10,borderBottom:"1px solid rgba(255,255,255,0.06)",background:"#0D1017",alignItems:"center",flexWrap:"wrap"}}>
+        {[["Universe",allUniq.length,"#C9A84C"],["Compress",compressionCount,"#00D084"],["Prime",primeCount,"#C9A84C"],["Earnings",earningsCount,"#FFA726"]].map(([l,v,c])=>(
+          <div key={l} style={{display:"flex",flexDirection:"column",gap:1}}>
+            <div style={{fontSize:8,letterSpacing:1,textTransform:"uppercase",color:"#4A5568"}}>{l}</div>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:c,letterSpacing:1}}>{v}</div>
+          </div>
+        ))}
+        <div style={{display:"flex",alignItems:"center",gap:4,padding:"2px 8px",borderRadius:4,background:marketHealth?`${marketHealth.color}15`:"rgba(255,255,255,0.04)",border:marketHealth?`1px solid ${marketHealth.color}40`:"1px solid rgba(255,255,255,0.08)",cursor:"pointer"}} onClick={()=>setCurrentTab('market')}>
+          {marketHealth ? (
+            <>
+              <span style={{fontSize:7,color:marketHealth.color,letterSpacing:1,textTransform:"uppercase",fontWeight:600}}>{marketHealth.tape}</span>
+              {marketHealth.spyLive && <span style={{fontSize:9,color:marketHealth.spyLive.changePct>=0?"#00D084":"#FF4757"}}>SPY {marketHealth.spyLive.changePct>=0?"+":""}{marketHealth.spyLive.changePct.toFixed(1)}%</span>}
+            </>
+          ) : (
+            <span style={{fontSize:7,color:"#4A5568",letterSpacing:1}}>MKT →</span>
+          )}
+        </div>
+        <div style={{marginLeft:"auto",display:"flex",gap:5}}>
+          <button onClick={()=>startScan(true)} disabled={scanning} style={{padding:"6px 10px",fontSize:9,letterSpacing:1,background:"rgba(0,208,132,0.1)",border:"1px solid rgba(0,208,132,0.3)",color:"#00D084",borderRadius:4,cursor:scanning?"not-allowed":"pointer",opacity:scanning?0.6:1}}>Quick</button>
+          <button onClick={()=>startScan(false)} disabled={scanning} style={{padding:"6px 10px",fontSize:9,letterSpacing:1,background:"rgba(201,168,76,0.12)",border:"1px solid rgba(201,168,76,0.15)",color:"#C9A84C",borderRadius:4,cursor:scanning?"not-allowed":"pointer",opacity:scanning?0.6:1,display:"flex",alignItems:"center",gap:4}}>
+            <span style={{display:"inline-block",animation:scanning?"spin 0.8s linear infinite":"none"}}>↻</span>
+            <span>{statusLabel}</span>
+          </button>
+          <button onClick={()=>setShowAlertModal(true)} style={{padding:"6px 10px",fontSize:9,letterSpacing:1,background:"rgba(41,121,255,0.1)",border:"1px solid rgba(41,121,255,0.2)",color:"#64B5F6",borderRadius:4,cursor:"pointer"}}>Alerts</button>
+        </div>
+      </div>
+
+      {/* Sort */}
+      <div style={{padding:"6px 16px",display:"flex",gap:5,alignItems:"center",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
+        <span style={{fontSize:9,letterSpacing:1,textTransform:"uppercase",color:"#4A5568"}}>Sort:</span>
+        {[["pbs","PBS"],["compression","Range%"],["vol","Vol"],["dp","DP"],["earn","Earn"]].map(([s,l])=>(
+          <button key={s} onClick={()=>setCurrentSort(s)} style={{padding:"3px 7px",fontSize:9,letterSpacing:1,textTransform:"uppercase",borderRadius:3,border:currentSort===s?"1px solid rgba(201,168,76,0.15)":"1px solid rgba(255,255,255,0.06)",background:currentSort===s?"rgba(201,168,76,0.12)":"transparent",color:currentSort===s?"#C9A84C":"#4A5568",cursor:"pointer"}}>{l}</button>
+        ))}
+      </div>
+
+      {/* Alert banners */}
+      {compressionAlerts.length>0 && (
+        <div style={{background:"rgba(0,208,132,0.06)",borderBottom:"1px solid rgba(0,208,132,0.15)",color:"#00D084",fontSize:10,letterSpacing:1,padding:"5px 16px",display:"flex",alignItems:"center",gap:6}}>
+          <div style={{width:6,height:6,borderRadius:"50%",background:"#00D084",flexShrink:0}}/>
+          {compressionAlerts.length} COMPRESSION ALERT{compressionAlerts.length>1?"S":""}: {compressionAlerts.map(t=>t.symbol).join(" — ")}
+        </div>
+      )}
+      {volExpAlerts.length>0 && (
+        <div style={{background:"rgba(124,77,255,0.06)",borderBottom:"1px solid rgba(124,77,255,0.2)",color:"#B39DDB",fontSize:10,letterSpacing:1,padding:"5px 16px",display:"flex",alignItems:"center",gap:6}}>
+          <div style={{width:6,height:6,borderRadius:"50%",background:"#B39DDB",flexShrink:0}}/>
+          VOL EXPANSION: {volExpAlerts.map(t=>`${t.symbol}(${liveData[t.symbol]?.live?.volRatio.toFixed(1)}x)`).join(" — ")}
+        </div>
+      )}
+      {earningsAlerts.length>0 && (
+        <div style={{background:"rgba(255,167,38,0.06)",borderBottom:"1px solid rgba(255,167,38,0.2)",color:"#FFA726",fontSize:10,letterSpacing:1,padding:"5px 16px",display:"flex",alignItems:"center",gap:6}}>
+          ⚠ EARNINGS within 7 days: {earningsAlerts.map(t=>`${t.symbol}(${daysToEarnings(t.symbol)===0?"TODAY":`${daysToEarnings(t.symbol)}d`})`).join(" — ")}
+        </div>
+      )}
+
+      {/* Cards */}
+      <div style={{padding:"8px 12px 12px"}}>
+        {active.length===0 && !scanning && (
+          <div style={{padding:"40px 16px",textAlign:"center",fontSize:11,color:"#4A5568",letterSpacing:1,textTransform:"uppercase"}}>Tap QUICK or FULL SCAN to load live data</div>
+        )}
+        {active.map(t=>(
+          <TickerCard key={t.symbol} t={getTickerWithOverrides(t)} live={liveData[t.symbol]?.live||null} pbs={t._pbs} isLeader={t._isLeader} spyRet20={spyRet20} onEdit={()=>setEditingTicker(t)} hasOverride={!!scoreOverrides[t.symbol]} liveScores={liveScores} bars={liveData[t.symbol]?.bars||null}/>
+        ))}
+
+        {extended.length>0 && (
+          <div style={{marginTop:8}}>
+            <div onClick={()=>setShowExtended(v=>!v)} style={{fontSize:9,letterSpacing:1,textTransform:"uppercase",color:"#4A5568",padding:"6px 0",display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
+              <span style={{color:"#FF4757"}}>FIRED SETUPS</span>
+              <div style={{flex:1,height:1,background:"rgba(255,255,255,0.06)"}}/>
+              <span>{showExtended?"▼":"▶"}</span>
+            </div>
+            {showExtended && extended.map(t=>(
+              <ExtendedRow key={t.symbol} t={t} live={liveData[t.symbol]?.live||null}/>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {lastUpdate && (
+        <div style={{padding:"8px 16px",fontSize:9,color:"#4A5568",letterSpacing:1,textAlign:"center",borderTop:"1px solid rgba(255,255,255,0.06)"}}>
+          Last scan: {lastUpdate.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})} · {Object.values(liveData).filter(d=>d&&!d.error).length}/{allUniq.length} loaded
+        </div>
+      )}
+
+      {/* Alert Modal */}
+      {showAlertModal && (
+        <div onClick={e=>{if(e.target===e.currentTarget)setShowAlertModal(false)}} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.85)",zIndex:200,display:"flex",alignItems:"flex-end"}}>
+          <div style={{background:"#0D1017",borderTop:"1px solid rgba(201,168,76,0.15)",borderRadius:"16px 16px 0 0",padding:"20px 16px 32px",width:"100%",maxHeight:"70vh",overflowY:"auto"}}>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:2,color:"#C9A84C",marginBottom:4}}>TOS Alert List</div>
+            <div style={{fontSize:9,letterSpacing:1,textTransform:"uppercase",color:"#4A5568",marginBottom:12}}>Copy and paste into thinkorswim watchlist</div>
+            <textarea readOnly value={alertText} style={{width:"100%",background:"#121620",border:"1px solid rgba(255,255,255,0.06)",color:"#C8D4E0",fontFamily:"'JetBrains Mono',monospace",fontSize:10,padding:10,borderRadius:6,height:180,resize:"none",marginBottom:10,lineHeight:1.6}}/>
+            <button onClick={()=>{ navigator.clipboard?.writeText(alertText).then(()=>{ setCopied(true); setTimeout(()=>setCopied(false),2000); }); }} style={{width:"100%",padding:12,background:"rgba(201,168,76,0.12)",border:"1px solid rgba(201,168,76,0.15)",color:"#C9A84C",fontFamily:"'JetBrains Mono',monospace",fontSize:11,letterSpacing:2,borderRadius:6,cursor:"pointer",textTransform:"uppercase",marginBottom:8}}>{copied?"✓ Copied!":"Copy to Clipboard"}</button>
+            <button onClick={()=>setShowAlertModal(false)} style={{width:"100%",padding:10,background:"transparent",border:"1px solid rgba(255,255,255,0.06)",color:"#4A5568",fontFamily:"'JetBrains Mono',monospace",fontSize:10,letterSpacing:1,borderRadius:6,cursor:"pointer"}}>Close</button>
+          </div>
+        </div>
+      )}
+
+      {/* Sector Strength Bar */}
+      <div style={{padding:"6px 16px",background:"#0D1017",borderBottom:"1px solid rgba(255,255,255,0.06)",display:"flex",gap:6,alignItems:"center",overflowX:"auto"}}>
+        <span style={{fontSize:8,color:"#4A5568",letterSpacing:1,textTransform:"uppercase",whiteSpace:"nowrap"}}>Sector:</span>
+        {[["ai","AI"],["defense","DEF"],["emerging","EMRG"],["momentum","MOM"]].map(([tab,label])=>{
+          const score = sectorStrength[tab] || 0;
+          const isStrongest = tab === strongestSector;
+          const color = score>=75?"#2979FF":score>=60?"#00D084":"#FFA726";
+          return (
+            <div key={tab} onClick={()=>setCurrentTab(tab)} style={{display:"flex",alignItems:"center",gap:4,padding:"3px 8px",borderRadius:4,background:isStrongest?"rgba(41,121,255,0.12)":"transparent",border:isStrongest?"1px solid rgba(41,121,255,0.25)":"1px solid rgba(255,255,255,0.06)",cursor:"pointer",whiteSpace:"nowrap"}}>
+              <span style={{fontSize:8,color:isStrongest?"#64B5F6":"#4A5568",letterSpacing:1}}>{label}</span>
+              <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color,letterSpacing:1}}>{score}</span>
+              {isStrongest && <span style={{fontSize:8,color:"#64B5F6"}}>▲</span>}
+            </div>
+          );
+        })}
+        <div style={{marginLeft:"auto",fontSize:8,color:"#4A5568",whiteSpace:"nowrap"}}>
+          {daysSinceAudit >= 7 && <span style={{color:"#FFA726"}}>⚠ Scores {daysSinceAudit}d old</span>}
+          {daysSinceAudit < 7 && daysSinceAudit > 0 && <span style={{color:"#4A5568"}}>Updated {daysSinceAudit}d ago</span>}
+        </div>
+      </div>
+
+      {/* Stale Earnings Warning */}
+      {getStaleEarnings().stale.length > 0 && (
+        <div style={{background:"rgba(255,71,87,0.06)",borderBottom:"1px solid rgba(255,71,87,0.15)",color:"#FF4757",fontSize:9,letterSpacing:1,padding:"4px 16px",textAlign:"center"}}>
+          ⚠ STALE EARNINGS DATES — Update needed: {getStaleEarnings().stale.join(", ")}
+        </div>
+      )}
+
+      {/* Score Editor Modal */}
+      {editingTicker && (
+        <ScoreEditor
+          t={getTickerWithOverrides(editingTicker)}
+          onSave={(updates) => handleSaveScores(editingTicker.symbol, updates)}
+          onClose={() => setEditingTicker(null)}
+        />
+      )}
+
+      {/* Late Entry Warning Banner */}
+      {lateEntryAlerts.length>0 && (
+        <div style={{background:"rgba(255,71,87,0.06)",borderBottom:"1px solid rgba(255,71,87,0.2)",color:"#FF4757",fontSize:10,letterSpacing:1,padding:"5px 16px",display:"flex",alignItems:"center",gap:6}}>
+          <span>⚠</span> LATE ENTRY WARNING: {lateEntryAlerts.map(t=>t.symbol).join(" — ")}
+        </div>
+      )}
+      {/* Breaking Out Banner */}
+      {breakingOutAlerts.length>0 && (
+        <div style={{background:"rgba(124,77,255,0.06)",borderBottom:"1px solid rgba(124,77,255,0.2)",color:"#B39DDB",fontSize:10,letterSpacing:1,padding:"5px 16px",display:"flex",alignItems:"center",gap:6}}>
+          <span>▶</span> BREAKING OUT NOW: {breakingOutAlerts.map(t=>t.symbol).join(" — ")}
+        </div>
+      )}
+
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@300;400;500;600&display=swap');
+        @keyframes spin { to { transform: rotate(360deg); } }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        ::-webkit-scrollbar { display: none; }
+      `}</style>
+    </div>
+  );
+}
+
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<Scanner/>);
+</script>
+</body>
+</html>
